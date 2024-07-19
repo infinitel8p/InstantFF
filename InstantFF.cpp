@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "InstantFF.h"
 
-BAKKESMOD_PLUGIN(InstantFF, "InstantFF", plugin_version, PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(InstantFF, "Instant ForFeit", plugin_version, PLUGINTYPE_FREEPLAY)
 
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
@@ -10,74 +10,32 @@ void InstantFF::onLoad()
     _globalCvarManager = cvarManager;
     LOG("InstantFF loaded!");
 
-    cvarManager->registerNotifier("InitializeCurrentPlayers", [this](std::vector<std::string> args) {
-        InitializeCurrentPlayers();
+    cvarManager->registerNotifier("Forfeit", [this](std::vector<std::string> args) {
+        Forfeit();
         }, "", PERMISSION_ALL);
 
-    //gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.OnAllTeamsCreated", [this](std::string eventName) {
-    //    LOG("Initialize Game Session");
-    //    cvarManager->executeCommand("InitializeCurrentPlayers");
-    //    });
-
-    //gameWrapper->HookEventWithCaller<ServerWrapper>("Function TAGame.GameEvent_Soccar_TA.OnGameTimeUpdated",
-    //    [this](ServerWrapper caller, void* params, std::string eventname)
-    //    {
-    //        cvarManager->executeCommand("InitializeCurrentPlayers");
-    //    }
-    //);
-
     gameWrapper->HookEvent("Function TAGame.VoteActor_TA.EventStarted", [this](std::string eventName) {
-	LOG("EventStarted ############################################################################################################################################################################################################################");
+        LOG("Your Mate wants to Forfeit");
+        cvarManager->executeCommand("Forfeit");
 	});
 
-    gameWrapper->HookEvent("Function TAGame.GFxHUD_TA.HandleCanVoteForfeitChanged", [this](std::string eventName) {
-        LOG("0 - Forfeiting is now possible");
-    });
-
-    gameWrapper->HookEvent("Function TAGame.GFxShell_TA.VoteToForfeit", [this](std::string eventName) {
-        LOG("1 - VoteToForfeit #######################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.PRI_TA.ServerVoteToForfeit", [this](std::string eventName) {
-        LOG("2 - ServerVoteToForfeit #######################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.PRI_TA.OnStartVoteToForfeitDisabledChanged", [this](std::string eventName) {
-        LOG("3 - OnStartVoteToForfeitDisabledChanged #######################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.GFxData_LocalPlayer_TA.HandleVoteToForfeitDisabledChanged", [this](std::string eventName) {
-        LOG("4 - HandleVoteToForfeitDisabledChanged #######################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.PRI_TA.EventStartVoteToForfeitDisabledChanged", [this](std::string eventName) {
-        LOG("5 - EventStartVoteToForfeitDisabledChanged #######################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.GameEvent_TA.EventCanVoteForfeitChanged", [this](std::string eventName) {
-        LOG("9 - EventCanVoteForfeitChanged #######################################################");
-        });
-
-
-    // yet unknown events
-    gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.OnForfeitVoteStarted", [this](std::string eventName) {
-        LOG("? - OnForfeitVoteStarted ##########################################################");
-        });
-
-    gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.OnCanVoteForfeitChanged", [this](std::string eventName) {
-        LOG("11 - OnCanVoteForfeitChanged #######################################################");
-        });
-
-    // Hook event to log forfeit initiator
-    gameWrapper->HookEvent("Function TAGame.PRI_TA.EventVoteToForfeit", [this](std::string eventName) {
-        LOG("Forfeit initiated #######################################################");
-        LogForfeitInitiator();
-        });
+    //Function TAGame.GFxHUD_TA.HandleCanVoteForfeitChanged
+    //Function TAGame.GFxShell_TA.VoteToForfeit
+    //Function TAGame.PRI_TA.ServerVoteToForfeit
+    //Function TAGame.PRI_TA.OnStartVoteToForfeitDisabledChanged
+    //Function TAGame.GFxData_LocalPlayer_TA.HandleVoteToForfeitDisabledChanged
+    //Function TAGame.PRI_TA.EventStartVoteToForfeitDisabledChanged
+    //Function TAGame.GameEvent_TA.EventCanVoteForfeitChanged"
+    // 
+    //// yet unknown events
+    //Function TAGame.GameEvent_Soccar_TA.OnForfeitVoteStarted
+    //Function TAGame.GameEvent_Soccar_TA.OnCanVoteForfeitChanged
+    //Function TAGame.PRI_TA.EventVoteToForfeit
 }
 
-void InstantFF::InitializeCurrentPlayers()
+void InstantFF::Forfeit()
 {
-    LOG("InitializeCurrentPlayers called");
+    LOG("Forfeit called");
 
     // Check if the game is valid
     if (!gameWrapper->IsInOnlineGame() && !gameWrapper->IsInFreeplay() || gameWrapper->IsInReplay()) {
@@ -111,27 +69,7 @@ void InstantFF::InitializeCurrentPlayers()
         if (!pri)
             continue;
 
-        LOG("############ Player: " + pri.GetPlayerName().ToString());
+        LOG("So we Forfeit aswell!");
         pri.ServerVoteToForfeit();
-    }
-}
-
-void InstantFF::LogForfeitInitiator()
-{
-    ServerWrapper sw = gameWrapper->GetOnlineGame();
-    if (sw.IsNull()) {
-        LOG("ServerWrapper is null");
-        return;
-    }
-
-    auto forfeitInitiators = sw.GetForfeitInitiatorIDs();
-    if (forfeitInitiators.Count() == 0) {
-        LOG("No forfeit initiators found");
-        return;
-    }
-
-    for (int i = 0; i < forfeitInitiators.Count(); ++i) {
-        SteamID initiatorID = forfeitInitiators.Get(i);
-        LOG("Forfeit Initiator: " + std::to_string(initiatorID.ID));
     }
 }

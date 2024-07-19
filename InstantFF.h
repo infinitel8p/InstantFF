@@ -18,8 +18,7 @@ class InstantFF: public BakkesMod::Plugin::BakkesModPlugin
 
 	//Boilerplate
 	void onLoad() override;
-	void InitializeCurrentPlayers();
-	void LogForfeitInitiator();
+	void Forfeit();
 	//void onUnload() override; // Uncomment and implement if you need a unload method
 
 public:
