@@ -10,18 +10,21 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 
 
 class InstantFF: public BakkesMod::Plugin::BakkesModPlugin
-	//,public SettingsWindowBase // Uncomment if you wanna render your own tab in the settings menu
-	//,public PluginWindowBase // Uncomment if you want to render your own plugin window
+	,public SettingsWindowBase
 {
-
 	//std::shared_ptr<bool> enabled;
 
-	//Boilerplate
 	void onLoad() override;
+	void onUnload() override;
+
 	void Forfeit();
-	//void onUnload() override; // Uncomment and implement if you need a unload method
+	void MateFF();
+	void TimedFF();
+
+	bool InstantFFEnabled = false;
+	bool MateFFEnabled = false;
+	bool TimedFFEnabled = false;
 
 public:
-	//void RenderSettings() override; // Uncomment if you wanna render your own tab in the settings menu
-	//void RenderWindow() override; // Uncomment if you want to render your own plugin window
+	void RenderSettings() override;
 };
