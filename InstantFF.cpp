@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "InstantFF.h"
+#include <chrono>
+#include <thread>
 
 BAKKESMOD_PLUGIN(InstantFF, "InstantFF - Loaded", plugin_version, PLUGINTYPE_FREEPLAY)
 
@@ -23,6 +25,17 @@ void InstantFF::onLoad()
     registerCvar("InstantFF_MateFF_enabled", "0", "Enable InstantFF AutoFF on Mate's Vote", MateFFEnabled);
     registerCvar("InstantFF_TimedFF_enabled", "0", "Enable InstantFF AutoFF on Timer", TimedFFEnabled);
 
+    auto registerIntCvar = [this](const std::string& name, const std::string& defaultValue, const std::string& description, int& variable, int minValue, int maxValue) {
+        cvarManager->registerCvar(name, defaultValue, description, true, true, minValue, true, maxValue)
+            .addOnValueChanged([this, &variable](std::string oldValue, CVarWrapper cvar) {
+            variable = cvar.getIntValue();
+                });
+        };
+
+    registerIntCvar("InstantFF_MateFF_delay", "0", "Delay for MateFF in seconds", MateFFDelay, 0, 10);
+    registerIntCvar("InstantFF_TimedFF_delay", "0", "Delay for TimedFF in seconds", TimedFFDelay, 0, 150);
+
+
     // Register commands for testing
     auto registerNotifier = [this](const std::string& name, void (InstantFF::* func)()) {
         cvarManager->registerNotifier(name, [this, func](std::vector<std::string> args) {
@@ -36,14 +49,40 @@ void InstantFF::onLoad()
 
     // Hook events
     gameWrapper->HookEvent("Function TAGame.VoteActor_TA.EventStarted", [this](std::string eventName) {
-        LOG("Your Mate wants to forfeit!");
         cvarManager->executeCommand("MateFF");
-	});
+        });
 
     gameWrapper->HookEvent("Function TAGame.GFxHUD_TA.HandleCanVoteForfeitChanged", [this](std::string eventName) {
-        LOG("Forfeiting is now possible!");
+        ServerWrapper sw = gameWrapper->IsInFreeplay() ? gameWrapper->GetGameEventAsServer() : gameWrapper->GetOnlineGame();
+        if (sw.IsNull() || sw.GetSecondsRemaining() <= 1 || sw.GetSecondsRemaining() >= 299) {
+            return;
+        }
+
         cvarManager->executeCommand("TimedFF");
-    });
+        });
+
+    gameWrapper->HookEventWithCaller<ServerWrapper>("Function TAGame.GameEvent_Soccar_TA.OnGameTimeUpdated",
+        [this](ServerWrapper caller, void* params, std::string eventname)
+        {
+            float currentGameTimeRemaining = caller.GetSecondsRemaining();
+
+            if (currentGameTimeRemaining <= 1 || currentGameTimeRemaining >= 299) {
+				return;
+            }
+
+            if (isMateFFActive && (startTimeRemaining - currentGameTimeRemaining >= MateFFDelay)) {
+                LOG("MateFF delay completed. Proceeding to forfeit...");
+                isMateFFActive = false;
+                Forfeit();
+            }
+
+            if (isTimedFFActive && (startTimeRemaining - currentGameTimeRemaining >= TimedFFDelay)) {
+                LOG("TimedFF delay completed. Proceeding to forfeit...");
+                isTimedFFActive = false;
+                Forfeit();
+            }
+        }
+    );
 
     //Function TAGame.GFxHUD_TA.HandleCanVoteForfeitChanged
     //Function TAGame.GFxShell_TA.VoteToForfeit
@@ -87,8 +126,7 @@ void InstantFF::Forfeit()
         pri.ServerVoteToForfeit();
     }
 
-    // toast to show that we voted to forfeit
-    gameWrapper->Toast("InstantFF", "Game has been FFed!", "TAGame", 5.0f, ToastType_OK);
+    gameWrapper->Toast("InstantFF", "Game has been successfully FFed!", "TAGame", 7.0f, ToastType_OK);
 }
 
 void InstantFF::MateFF()
@@ -97,22 +135,39 @@ void InstantFF::MateFF()
         return;
     }
 
-    LOG("So we are forfeiting as well...");
-    Forfeit();
+    ServerWrapper sw = gameWrapper->GetOnlineGame();
+    if (sw.IsNull()) {
+        LOG("GameWrapper is null");
+        return;
+    }
+
+    startTimeRemaining = sw.GetSecondsRemaining();
+    isMateFFActive = true;
+
+    gameWrapper->Toast("InstantFF", "Your mate wants to forfeit! You will forfeit in " + std::to_string(MateFFDelay) + " seconds!", "TAGame", 5.0f, ToastType_Info);
 }
 
 void InstantFF::TimedFF()
 {
-    // This function exists to later add timer functionalities, hence the double check for the cvars
     if (!InstantFFEnabled || !TimedFFEnabled) {
         return;
     }
-    LOG("So we forfeit...");
-    Forfeit();
+
+    ServerWrapper sw = gameWrapper->GetOnlineGame();
+    if (sw.IsNull()) {
+        LOG("GameWrapper is null");
+        return;
+    }
+
+    startTimeRemaining = sw.GetSecondsRemaining();
+    isTimedFFActive = true;
+
+    gameWrapper->Toast("InstantFF", "You will forfeit in " + std::to_string(TimedFFDelay) + " seconds!", "TAGame", 5.0f, ToastType_Info);
 }
+
 
 void InstantFF::onUnload()
 {
-    LOG("InstantFF unloaded!");
     gameWrapper->Toast("InstantFF", "Plugin disabled!", "TAGame", 5.0f, ToastType_Info);
+    LOG("InstantFF unloaded!");
 }

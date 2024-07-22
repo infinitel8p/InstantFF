@@ -24,6 +24,12 @@ class InstantFF: public BakkesMod::Plugin::BakkesModPlugin
 	bool InstantFFEnabled = false;
 	bool MateFFEnabled = false;
 	bool TimedFFEnabled = false;
+	int MateFFDelay = 0;
+	int TimedFFDelay = 0;
+
+	int startTimeRemaining = 0;
+	bool isMateFFActive = false;
+	bool isTimedFFActive = false;
 
 public:
 	void RenderSettings() override;
