@@ -27,7 +27,8 @@ class InstantFF: public BakkesMod::Plugin::BakkesModPlugin
 	int MateFFDelay = 0;
 	int TimedFFDelay = 0;
 
-	int startTimeRemaining = 0;
+	float mateFFStartTime = 0.0f;
+	float timedFFStartTime = 0.0f;
 	bool isMateFFActive = false;
 	bool isTimedFFActive = false;
 
