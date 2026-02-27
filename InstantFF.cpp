@@ -67,7 +67,15 @@ void InstantFF::onLoad()
             float currentGameTimeRemaining = caller.GetSecondsRemaining();
 
             if (currentGameTimeRemaining <= 1 || currentGameTimeRemaining >= 299) {
-				return;
+                // Game time out of normal range (match end/reset). Clear any active FF state
+                // so future MateFF/TimedFF triggers are not blocked by stale flags.
+                if (isMateFFActive || isTimedFFActive) {
+                    isMateFFActive = false;
+                    isTimedFFActive = false;
+                    mateFFStartTime = 0.0f;
+                    timedFFStartTime = 0.0f;
+                }
+                return;
             }
 
             if (isMateFFActive && (mateFFStartTime - currentGameTimeRemaining >= static_cast<float>(MateFFDelay))) {
