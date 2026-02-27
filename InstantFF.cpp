@@ -139,7 +139,7 @@ void InstantFF::MateFF()
         return;
     }
 
-    ServerWrapper sw = gameWrapper->IsInFreeplay() ? gameWrapper->GetGameEventAsServer() : gameWrapper->GetOnlineGame();
+    ServerWrapper sw = gameWrapper->GetOnlineGame();
     if (sw.IsNull()) {
         LOG("GameWrapper is null");
         return;
@@ -161,7 +161,7 @@ void InstantFF::TimedFF()
         return;
     }
 
-    ServerWrapper sw = gameWrapper->IsInFreeplay() ? gameWrapper->GetGameEventAsServer() : gameWrapper->GetOnlineGame();
+    ServerWrapper sw = gameWrapper->GetOnlineGame();
     if (sw.IsNull()) {
         LOG("GameWrapper is null");
         return;
