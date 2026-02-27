@@ -67,16 +67,24 @@ void InstantFF::onLoad()
             float currentGameTimeRemaining = caller.GetSecondsRemaining();
 
             if (currentGameTimeRemaining <= 1 || currentGameTimeRemaining >= 299) {
-				return;
+                // Game time out of normal range (match end/reset). Clear any active FF state
+                // so future MateFF/TimedFF triggers are not blocked by stale flags.
+                if (isMateFFActive || isTimedFFActive) {
+                    isMateFFActive = false;
+                    isTimedFFActive = false;
+                    mateFFStartTime = 0.0f;
+                    timedFFStartTime = 0.0f;
+                }
+                return;
             }
 
-            if (isMateFFActive && (startTimeRemaining - currentGameTimeRemaining >= MateFFDelay)) {
+            if (isMateFFActive && (mateFFStartTime - currentGameTimeRemaining >= static_cast<float>(MateFFDelay))) {
                 LOG("MateFF delay completed. Proceeding to forfeit...");
                 isMateFFActive = false;
                 Forfeit();
             }
 
-            if (isTimedFFActive && (startTimeRemaining - currentGameTimeRemaining >= TimedFFDelay)) {
+            if (isTimedFFActive && (timedFFStartTime - currentGameTimeRemaining >= static_cast<float>(TimedFFDelay))) {
                 LOG("TimedFF delay completed. Proceeding to forfeit...");
                 isTimedFFActive = false;
                 Forfeit();
@@ -103,7 +111,7 @@ void InstantFF::Forfeit()
     LOG("Forfeiting...");
 
     // Check if the game is valid
-    if (!gameWrapper->IsInOnlineGame() && !gameWrapper->IsInFreeplay() || gameWrapper->IsInReplay()) {
+    if ((!gameWrapper->IsInOnlineGame() && !gameWrapper->IsInFreeplay()) || gameWrapper->IsInReplay()) {
         gameWrapper->Toast("InstantFF", "Not in an online game or freeplay!", "TAGame", 5.0f, ToastType_Error);
         return;
     }
@@ -135,13 +143,17 @@ void InstantFF::MateFF()
         return;
     }
 
+    if (isMateFFActive) {
+        return;
+    }
+
     ServerWrapper sw = gameWrapper->GetOnlineGame();
     if (sw.IsNull()) {
         LOG("GameWrapper is null");
         return;
     }
 
-    startTimeRemaining = sw.GetSecondsRemaining();
+    mateFFStartTime = sw.GetSecondsRemaining();
     isMateFFActive = true;
 
     gameWrapper->Toast("InstantFF", "Your mate wants to forfeit! You will forfeit in " + std::to_string(MateFFDelay) + " seconds!", "TAGame", 5.0f, ToastType_Info);
@@ -153,13 +165,17 @@ void InstantFF::TimedFF()
         return;
     }
 
+    if (isTimedFFActive) {
+        return;
+    }
+
     ServerWrapper sw = gameWrapper->GetOnlineGame();
     if (sw.IsNull()) {
         LOG("GameWrapper is null");
         return;
     }
 
-    startTimeRemaining = sw.GetSecondsRemaining();
+    timedFFStartTime = sw.GetSecondsRemaining();
     isTimedFFActive = true;
 
     gameWrapper->Toast("InstantFF", "You will forfeit in " + std::to_string(TimedFFDelay) + " seconds!", "TAGame", 5.0f, ToastType_Info);
